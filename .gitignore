@@ -1,0 +1,17 @@
+# Ignore n8n credentials (never commit them)
+*.credentials.json
+
+# Ignore local environment files
+.env
+.env.*
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore Python/IDE files if any
+_pycache_/
+*.pyc
+*.pyo
+*.idea/
+*.vscode
