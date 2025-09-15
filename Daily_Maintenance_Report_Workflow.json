@@ -1,0 +1,107 @@
+{
+  "name": "Daily Maintenance Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "mode": "everyHour"
+            }
+          ]
+        }
+      },
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "notes": "Runs daily at 07:00"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    wo.id AS WorkOrderID,\n    wo.equipment,\n    wo.due_date,\n    wo.status,\n    wo.priority\nFROM work_orders wo\nWHERE \n    wo.status IN ('OPEN','IN_PROGRESS')\n    AND (wo.due_date <= CURRENT_DATE OR wo.due_date <= CURRENT_DATE + INTERVAL '7 days')\nORDER BY wo.priority DESC, wo.due_date ASC;"
+      },
+      "name": "Database Query",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "postgres": "Your Postgres Credential"
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const rows = items.map(item => {\n  return `<tr>\n    <td>${item.json.WorkOrderID}</td>\n    <td>${item.json.equipment}</td>\n    <td>${item.json.due_date}</td>\n    <td>${item.json.status}</td>\n    <td>${item.json.priority}</td>\n  </tr>`;\n});\n\nreturn [{\n  json: {\n    htmlReport: `\n      <h2>Daily Maintenance Report</h2>\n      <p>Here are the work orders due today/this week:</p>\n      <table border=\"1\" cellpadding=\"5\" cellspacing=\"0\">\n        <tr>\n          <th>ID</th>\n          <th>Equipment</th>\n          <th>Due Date</th>\n          <th>Status</th>\n          <th>Priority</th>\n        </tr>\n        ${rows.join(\"\")}\n      </table>\n    `\n  }\n}];"
+      },
+      "name": "Format Report",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "maintenance@yourcompany.com",
+        "toEmail": "team@yourcompany.com",
+        "subject": "Daily Maintenance Report",
+        "text": "Please see the attached maintenance report.",
+        "html": "={{$json[\"htmlReport\"]}}"
+      },
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        300
+      ],
+      "credentials": {
+        "smtp": "Your SMTP Credential"
+      }
+    }
+  ],
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          {
+            "node": "Database Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Database Query": {
+      "main": [
+        [
+          {
+            "node": "Format Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Report": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
